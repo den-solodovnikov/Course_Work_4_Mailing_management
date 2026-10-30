@@ -1,0 +1,23 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="container">
+    <div class="row text-center justify-content-center">
+        <div class="col-6">
+            <div class="card my-5 p-4 shadow-sm">
+                <h2 class="text-danger mb-3">Вы вышли из системы</h2>
+                <p class="lead">Спасибо, что воспользовались нашим сайтом. Вы успешно вышли из системы.</p>
+                <div class="mt-4">
+                    <a class="btn btn-primary" href="{% url 'users:login' %}">Войти снова</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

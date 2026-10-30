@@ -1,0 +1,32 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="container">
+    <div class="row text-center">
+        <a class="p-2 btn btn-outline-primary" href="">Запустить рассылки</a>
+        <div class="col-4">
+            <div class="metrics-container">
+                <div class="metric-card">
+                <h3>Всего рассылок</h3>
+                <p>{{ total_mailings }}</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Активные рассылки</h3>
+                    <p>{{ active_mailings }}</p>
+                </div>
+
+                <div class="metric-card">
+                    <h3>Уникальные клиенты</h3>
+                    <p>{{ unique_clients }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
