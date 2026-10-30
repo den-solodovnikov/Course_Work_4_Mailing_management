@@ -1,0 +1,45 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="stats-container">
+    <div class="card success">Успешных отправлений: <strong>{{ success_count }}</strong></div>
+    <div class="card danger">Ошибок доставки: <strong>{{ failed_count }}</strong></div>
+</div>
+
+<!-- Журнал для диагностики -->
+<h3>Журнал последних попыток отправки</h3>
+<table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%;">
+    <thead>
+        <tr>
+            <th>Дата и время</th>
+            <th>Рассылка</th>
+            <th>Статус</th>
+            <th>Ответ сервера / Текст ошибки</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in latest_logs %}
+        <tr>
+            <td>{{ log.attempt_time|date:"d.m.Y H:i:s" }}</td>
+            <td>{{ log.mailing.name }}</td>
+            <td>
+                <span style="color: {% if log.status == 'Успешно' %}green{% else %}red{% endif %}; font-weight: bold;">
+                    {{ log.status }}
+                </span>
+            </td>
+            <td><code>{{ log.server_response|default:"-" }}</code></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">Попыток отправки еще не зафиксировано.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

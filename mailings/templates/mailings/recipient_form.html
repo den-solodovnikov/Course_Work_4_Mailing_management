@@ -1,0 +1,27 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="container">
+    <div class="row text-center">
+        <a class="p-2 btn btn-outline-primary" href="">Получатель рассылки</a>
+        <h1>{% if object %}Редактировать клиента
+            {% else %}Добавить клиента
+            {% endif %}
+        </h1>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Сохранить</button>
+        </form>
+
+        <br>
+        <a href="{% url 'mailings:recipients' %}">Назад к списку</a>
+    </div>
+</div>
+
+{% endblock %}
