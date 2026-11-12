@@ -31,6 +31,15 @@ class MyUserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    is_manager = models.BooleanField(default=False, verbose_name="Менеджер")
+    is_subscribed  = models.BooleanField(default=True, verbose_name="Подписан на рассылку")
+
+    def save(self, *args, **kwargs):
+        # Менеджеру даем доступ в /admin/ (is_staff)
+        if self.is_manager:
+            self.is_staff = True
+        super().save(*args, **kwargs)
+
     username = None
     first_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='Имя', help_text='Введите имя')
     last_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='Фамилия', help_text='Введите фамилию')

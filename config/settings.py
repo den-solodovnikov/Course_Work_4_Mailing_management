@@ -114,7 +114,7 @@ LOGIN_URL = 'users:login'
 
 CACHES_ENABLED = True
 if CACHES_ENABLED:
-    CASHES = {
+    CAСHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
             'LOCATION': os.getenv('LOCATION_REDIS'),

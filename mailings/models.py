@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils import timezone
 
 from django.core.exceptions import ValidationError
@@ -13,6 +14,13 @@ class Message(models.Model):
     content = models.TextField(
         verbose_name="Содержимое",
         help_text="Введите текст",
+        null=True,
+        blank=True,
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name='Владелец',
         null=True,
         blank=True,
     )
@@ -46,6 +54,13 @@ class RecipientMail(models.Model):
         null=True,
         blank=True,
     )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name='Владелец',
+        null=True,
+        blank=True,
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -59,61 +74,63 @@ class RecipientMail(models.Model):
 
 
 class Mailing(models.Model):
+    class Status(models.TextChoices):
+        CREATED = 'created', 'Создана'
+        STARTED = 'started', 'Запущена'
+        COMPLETED = 'completed', 'Завершена'
+
     start_time = models.DateTimeField(
-        verbose_name='С какого момента рассылка может быть запущена',
+        verbose_name='Время начала рассылки',
         help_text="Введите дату и время запуска рассылки 'YYYY-MM-DD HH:MM:SS'",
         null=True,
         blank=True,
     )
     end_time = models.DateTimeField(
-        verbose_name='До какого момента разрешено отправлять рассылку',
+        verbose_name='Время окончания рассылки',
         help_text="Введите дату и время окончания запуска рассылки 'YYYY-MM-DD HH:MM:SS'",
         null=True,
         blank=True,
     )
-
-    class Status(models.TextChoices):
-        CREATE = 'create', 'Создана'
-        SEND = 'send', 'Запущена'
-        COMPLETED = 'completed', 'Завершена'
-
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name='Владелец',
+        null=True,
+        blank=True,
+    )
     status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=Status.choices,
+        default=Status.CREATED,
         verbose_name='Статус отправки',
         help_text="Выберите состояние письма",
     )
     message = models.ForeignKey(Message, on_delete=models.CASCADE)
     recipients = models.ManyToManyField(RecipientMail)
 
-    def clean(self):
-        """ Валидация даты рассылок. """
-        super().clean()
+    def update_status(self, save=True):
+        """Динамически вычисляет и при необходимости сохраняет статус рассылки."""
+        now = timezone.now()
 
-        # Проверяем, что оба поля заполнены, чтобы избежать ошибок AttributeError
-        if self.start_time and self.end_time:
-            # Проверка: start_time не может быть в прошлом
-            if self.start_time < timezone.now():
-                raise ValidationError(
-                    {"start_time": "Время начала рассылки не может быть в прошлом."}
-                )
+        if now < self.start_time:
+            new_status = self.Status.CREATED
+        elif self.start_time <= now <= self.end_time:
+            new_status = self.Status.STARTED
+        else:
+            new_status = self.Status.COMPLETED
 
-            # Проверка: start_time должен быть раньше end_time
-            if self.start_time >= self.end_time:
-                raise ValidationError(
-                    {
-                        "end_time": "Время окончания должно быть позже времени начала."
-                    }
-                )
+        if self.status != new_status:
+            self.status = new_status
+            if save:
+                self.save(update_fields=['status'])
+
+        return self.status
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        # Автоматический пересчёт статуса перед каждым сохранением объекта
+        if 'update_fields' not in kwargs or 'status' not in kwargs['update_fields']:
+            self.update_status(save=False)
         super().save(*args, **kwargs)
-
-    def get_object(self, queryset=None):
-        obj = super().get_object(queryset)
-        obj.update_status()  # ← пересчёт и сохранение статуса
-        return obj
 
     class Meta:
         verbose_name = "Рассылка"

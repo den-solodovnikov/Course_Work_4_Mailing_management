@@ -1,54 +1,71 @@
 import smtplib
 
 from django.core.mail import send_mail
+from django.conf import settings
 from django.utils import timezone
 
-from .models import Message, Mailing, MailingAttempt
+from .models import Mailing, MailingAttempt
 
 
-def send_mailing_service(mailing: Mailing) -> None:
+def send_mailing_service(mailing: Mailing) -> tuple[bool, str]:
+
+    recipients = mailing.recipients.all()
+    if not recipients.exists():
+        return False, "У рассылки нет получателей."
+
     now = timezone.now()
 
     if not mailing.start_time <= now <= mailing.end_time:
         raise ValueError("Рассылка недоступна для отправки")
 
-    attempts = []
+    if mailing.status == Mailing.Status.CREATED:
+        mailing.status = Mailing.Status.STARTED
+        mailing.save(update_fields=['status'])
 
-    for recipient in mailing.recipients.all():
+    success_count = 0
+    failed_count = 0
+    last_error = ''
+
+    for recipient in recipients:
         try:
             send_mail(
-                subject=mailing.message.title,
-                message=mailing.message.content,
-                from_email=None,
+                subject=mailing.message.subject,
+                message=mailing.message.body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[recipient.email],
                 fail_silently=False,
             )
 
-            attempts.append(
-                MailingAttempt(
-                    mailing=mailing,
-                    attempt_time=timezone.now(),
-                    status="Успешно",
-                    server_response="Успешно",
-                )
+            MailingAttempt.objects.create(
+                mailing=mailing,
+                status='status',
+                server_response="Письмо успешно отправлено",
             )
+            success_count += 1
+        except (smtplib.SMTPException, Exception) as error:
+            last_error = str(error)
 
-        except Exception as exc:
-            attempts.append(
-                MailingAttempt(
-                    mailing=mailing,
-                    attempt_time=timezone.now(),
-                    status="Не успешно",
-                    server_response=f'Не успешно: {str(exc)}',
-                )
+            MailingAttempt.objects.create(
+                mailing=mailing,
+                status='failed',
+                server_response=last_error,
             )
+            failed_count += 1
 
-    MailingAttempt.objects.bulk_create(attempts)
+    # Формируем итоговый ответ для Celery-задачи
+    total = success_count + failed_count
+    result_message = f"Обработано: {total}. Успешно: {success_count}, с ошибкой: {failed_count}."
 
+    # Если ни одно письмо не ушло при наличии клиентов, считаем запуск неуспешным
+    if success_count == 0 and failed_count > 0:
+        return False, result_message
+
+    return True, result_message
+
+    #
 
 def log_mailing_attempt(mailing, recipient_list):
     try:
-        # Пример отправки сообщения
         send_mail(
             subject=mailing.subject,
             message=mailing.body,

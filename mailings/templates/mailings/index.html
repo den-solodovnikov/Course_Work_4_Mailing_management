@@ -12,17 +12,12 @@
         <div class="col-4">
             <div class="metrics-container">
                 <div class="metric-card">
-                <h3>Всего рассылок</h3>
-                <p>{{ total_mailings }}</p>
-                </div>
-                <div class="metric-card">
-                    <h3>Активные рассылки</h3>
-                    <p>{{ active_mailings }}</p>
-                </div>
-
-                <div class="metric-card">
-                    <h3>Уникальные клиенты</h3>
-                    <p>{{ unique_clients }}</p>
+                    <h3>Всего рассылок --> {{ stats.total_mailings }}<h3>
+                    <h3>Активные рассылки --> {{ stats.active_mailings }}<h3>
+                    <h3>Всего попыток --> {{ stats.total_attempts }}</h3>
+                    <h3>Успешных попыток --> {{ stats.success_attempts }}</h3>
+                    <h3>Ошибок --> {{ stats.failed_attempts }}</h3>
+                    <h3>Уникальных клиентов --> {{ stats.unique_clients }}</h3>
                 </div>
             </div>
         </div>

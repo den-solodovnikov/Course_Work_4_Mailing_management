@@ -5,7 +5,7 @@
 {% block content %}
 
 {% include 'mailings/title.html' %}
-    <form action="{% url 'mailing:send_mailing' mailing.id %}" method="post">
+    <form action="{% url 'mailing:run_mailing' mailing.id %}" method="post">
     {% csrf_token %}
     <button type="submit" class="btn btn-primary">Запустить рассылку сейчас</button>
     </form>

@@ -41,7 +41,7 @@ def send_single_mailing_task(mailing_id):
         else:
             mailing.status = Mailing.Status.CREATE  # возвращаем в исходный при ошибке
         mailing.save(update_fields=['status'])
-        return f"Mailing {mailing_id}: {message}"
+        return f"Сообщение {mailing_id}: {message}"
 
     except Mailing.DoesNotExist:
-        return f"Mailing {mailing_id} not found."
+        return f"Сообщение {mailing_id} не найдено."

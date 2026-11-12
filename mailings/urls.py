@@ -1,18 +1,18 @@
 from django.urls import path
 
-from mailings.services import log_mailing_attempt
-from mailings.views import IndexView, run_mailing_view, RecipientMailListView, RecipientMailCreateView, \
+from mailings.views import  run_mailing_view, RecipientMailListView, RecipientMailCreateView, \
     RecipientMailUpdateView, RecipientDeleteView, MessageListView, MessageCreateView, MessageUpdateView, \
-    MessageDeleteView, MailingListView, MailingCreateView, MailingUpdateView, MailingDeleteView, run_mailing_view
+    MessageDeleteView, MailingListView, MailingCreateView, MailingUpdateView, MailingDeleteView, run_mailing_view, \
+    mailing_stats_view
 from mailings.apps import MailingsConfig
 from . import views
 
 app_name = MailingsConfig.name
 
 urlpatterns = [
-    path("mailings/", IndexView.as_view(), name="index"),
-    path("mailings/stat/<int:mailing>", log_mailing_attempt, name="statistic"),
-    path("mailings/run/<int:pk>/", run_mailing_view, name="run_mailing"),
+    # path("mailings/", IndexView.as_view(), name="index"),
+    path("mailings/stat/", mailing_stats_view, name="mailing_stats"),
+    path("mailings/run/<int:pk>/", views.run_mailing_view, name="run_mailing"),
     path("mailings/recipients/", RecipientMailListView.as_view(), name="recipients"),
     path("mailings/recipient/create/", RecipientMailCreateView.as_view(), name="recipient_form"),
     path("mailings/recipient/update/<int:pk>/", RecipientMailUpdateView.as_view(), name="recipient_update"),
