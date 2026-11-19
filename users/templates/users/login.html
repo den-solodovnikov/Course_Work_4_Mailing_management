@@ -1,0 +1,29 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="container">
+    <div class="row text-center">
+        <div class="col-4">
+            <form method="post" class="row" enctype="multipart/form-data">
+                <div class="card">
+                    <div class="card-body">
+                        {% csrf_token %}
+                        {{ form.as_p}}
+                    </div>
+                    <button type="submit" class="btn btn-lg btn-block btn-outline-primary">
+                        Войти
+                    </button>
+                </div>
+            </form>
+            <hr>
+            Забыли пароль? <a href="{% url 'users:password-reset' %}">Сбросить пароль</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'mailings/base.html' %}
+
+{% block title %}Сервис управления рассылками{% endblock %}
+
+{% block content %}
+
+{% include 'mailings/title.html' %}
+
+<div class="container">
+    <div class="row text-center">
+        {% if user.is_superuser or user.is_manager %}
+            <a class="p-2 btn btn-outline-primary" href="">Запустить рассылки</a>
+        {% endif %}
+        <div class="col-4">
+            <div class="metrics-container">
+                <div class="metric-card">
+                    <h3>Всего рассылок --> {{ stats.total_mailings }}<h3>
+                    <h3>Активные рассылки --> {{ stats.active_mailings }}<h3>
+                    <h3>Всего попыток --> {{ stats.total_attempts }}</h3>
+                    <h3>Успешных попыток --> {{ stats.success_attempts }}</h3>
+                    <h3>Ошибок --> {{ stats.failed_attempts }}</h3>
+                    <h3>Уникальных клиентов --> {{ stats.unique_clients }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
