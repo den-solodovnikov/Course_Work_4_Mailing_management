@@ -16,13 +16,10 @@ def check_and_run_mailings_task():
 
     # Фильтруем рассылки, которые актуальны прямо сейчас
     active_mailings = Mailing.objects.filter(
-        start_time__lte=now,
-        end_time__gte=now
-    ).exclude(status=Mailing.Status.COMPLETED)
+        start_time__lte=now, end_time__gte=now, status=Mailing.Status.CREATED
+    )
 
     for mailing in active_mailings:
-        mailing.status = Mailing.Status.SEND
-        mailing.save(update_fields=['status'])
         # Вызываем задачу асинхронно через .delay()
         send_single_mailing_task.delay(mailing.id)
 
@@ -40,7 +37,7 @@ def send_single_mailing_task(mailing_id):
             mailing.status = Mailing.Status.COMPLETED
         else:
             mailing.status = Mailing.Status.CREATE  # возвращаем в исходный при ошибке
-        mailing.save(update_fields=['status'])
+        mailing.save(update_fields=["status"])
         return f"Сообщение {mailing_id}: {message}"
 
     except Mailing.DoesNotExist:

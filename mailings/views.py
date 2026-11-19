@@ -9,8 +9,17 @@ from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse_lazy
 from django.views.decorators.cache import cache_page, cache_control
 from django.views.decorators.http import require_POST
-from django.views.generic import TemplateView, DetailView, ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import (
+    TemplateView,
+    DetailView,
+    ListView,
+    CreateView,
+    UpdateView,
+    DeleteView,
+)
 from django.utils import timezone
+
+from .forms import MailingForm
 from .models import Mailing, RecipientMail, Message, MailingAttempt
 from .tasks import send_single_mailing_task
 
@@ -40,7 +49,7 @@ def get_mailing_stats(user):
 
         stats = {
             "total_mailings": mailings_qs.count(),
-            "active_mailings": mailings_qs.filter(status="success").count(),
+            "active_mailings": mailings_qs.filter(status="started").count(),
             "total_attempts": attempt_counts["total_attempts"] or 0,
             "success_attempts": attempt_counts["success_attempts"] or 0,
             "failed_attempts": attempt_counts["failed_attempts"] or 0,
@@ -62,7 +71,7 @@ class OwnerQuerysetMixin(LoginRequiredMixin):
     def get_queryset(self):
         queryset = super().get_queryset()
         # Менеджеры или суперпользователи видят всё, остальные — только своё
-        if self.request.user.is_superuser or self.request.user.groups.filter(name='Manager').exists():
+        if self.request.user.is_superuser:
             return queryset
         return queryset.filter(owner=self.request.user)
 
@@ -86,30 +95,34 @@ class RecipientMailListView(OwnerQuerysetMixin, ListView):
     login_url = reverse_lazy("mailings:mailing_stats")
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        if (
+            self.request.user.is_superuser
+            or self.request.user.groups.filter(name="Manager").exists()
+        ):
+            return super().get_queryset()
+        return RecipientMail.objects.filter(owner=self.request.user)
 
 
 class RecipientMailCreateView(OwnerQuerysetMixin, CreateView):
     model = RecipientMail
     template_name = "mailings/recipient_form.html"
     fields = ("email", "full_name", "comment")
-    success_url = reverse_lazy('mailings:recipients')
+    success_url = reverse_lazy("mailings:recipients")
     login_url = reverse_lazy("mailings:recipients")
 
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:recipient_detail", kwargs={'pk': self.object.pk})
+    def form_valid(self, form):
+        obj = form.save(commit=False)
+        obj.owner = self.request.user
+        obj.save()
+        return super().form_valid(form)
 
 
 class RecipientMailUpdateView(OwnerQuerysetMixin, UpdateView):
     model = RecipientMail
     template_name = "mailings/recipient_form.html"
     fields = ("email", "full_name", "comment")
-    success_url = reverse_lazy('mailings:recipients')
+    success_url = reverse_lazy("mailings:recipients")
     login_url = reverse_lazy("mailings:recipients")
-
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:recipient_detail", kwargs={'pk': self.object.pk})
 
 
 class RecipientDeleteView(OwnerQuerysetMixin, DeleteView):
@@ -138,30 +151,34 @@ class MessageListView(OwnerQuerysetMixin, ListView):
     login_url = reverse_lazy("mailings:mailing_stats")
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        if (
+            self.request.user.is_superuser
+            or self.request.user.groups.filter(name="Manager").exists()
+        ):
+            return super().get_queryset()
+        return Message.objects.filter(owner=self.request.user)
 
 
 class MessageCreateView(OwnerQuerysetMixin, CreateView):
     model = Message
     template_name = "mailings/message_form.html"
     fields = ("title", "content")
-    success_url = reverse_lazy('mailings:messages')
+    success_url = reverse_lazy("mailings:messages")
     login_url = reverse_lazy("mailings:messages")
 
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:recipient_detail", kwargs={'pk': self.object.pk})
+    def form_valid(self, form):
+        obj = form.save(commit=False)
+        obj.owner = self.request.user
+        obj.save()
+        return super().form_valid(form)
 
 
 class MessageUpdateView(OwnerQuerysetMixin, UpdateView):
     model = Message
     template_name = "mailings/message_form.html"
     fields = ("title", "content")
-    success_url = reverse_lazy('mailings:messages')
+    success_url = reverse_lazy("mailings:messages")
     login_url = reverse_lazy("mailings:messages")
-
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:message_detail", kwargs={'pk': self.object.pk})
 
 
 class MessageDeleteView(OwnerQuerysetMixin, DeleteView):
@@ -192,7 +209,9 @@ def get_cached_user_data(user):
 
 
 @login_required
-@cache_control(private=True, max_age=60)  # Клиентское кеширование в браузере на 60 секунд
+@cache_control(
+    private=True, max_age=60
+)  # Клиентское кеширование в браузере на 60 секунд
 def data_list(request):
     items = get_cached_user_data(request.user)
     return render(request, "mailings/mailings.html", {"items": items})
@@ -208,30 +227,43 @@ def clear_user_data_cache(sender, instance, **kwargs):
 class MailingCreateView(OwnerQuerysetMixin, CreateView):
     model = Mailing
     template_name = "mailings/mailing_form.html"
-    fields = ("start_time", "end_time", "message", "recipients")
-    success_url = reverse_lazy('mailings:mailings')
+    form_class = MailingForm
+    success_url = reverse_lazy("mailings:mailings")
     login_url = reverse_lazy("mailings:mailings")
 
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:recipient_detail", kwargs={'pk': self.object.pk})
+    def form_valid(self, form):
+        obj = form.save(commit=False)
+        obj.owner = self.request.user
+        obj.save()
+        return super().form_valid(form)
 
 
 class MailingUpdateView(OwnerQuerysetMixin, UpdateView):
     model = Mailing
     template_name = "mailings/mailing_form.html"
-    fields = ("start_time", "end_time", "status", "message", "recipients")
-    success_url = reverse_lazy('mailings:mailings')
+    form_class = MailingForm
+    success_url = reverse_lazy("mailings:mailings")
     login_url = reverse_lazy("mailings:mailings")
+
 
 class MailingListView(OwnerQuerysetMixin, ListView):
     model = Mailing
     template_name = "mailings/mailings.html"
     fields = ("start_time", "end_time", "status", "message", "recipients")
-    success_url = reverse_lazy('mailings:mailings')
+    success_url = reverse_lazy("mailings:mailings")
     login_url = reverse_lazy("mailings:mailings")
 
-    # def get_success_url(self):
-    #     return reverse_lazy("mailings:message_detail", kwargs={'pk': self.object.pk})
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if (
+            self.request.user.is_superuser
+            or self.request.user.groups.filter(name="Manager").exists()
+        ):
+            context["mailings"] = self.model.objects.all()
+        else:
+            context["mailings"] = self.model.objects.filter(owner=self.request.user)
+
+        return context
 
 
 class MailingDeleteView(OwnerQuerysetMixin, DeleteView):
@@ -241,11 +273,10 @@ class MailingDeleteView(OwnerQuerysetMixin, DeleteView):
     login_url = reverse_lazy("mailings:mailing_stats")
 
 
+@login_required
 @require_POST  # Запрещает GET-запросы в целях безопасности
 def run_mailing_view(request, pk):
     now = timezone.now()
-    mailing = get_object_or_404(Mailing, pk=pk)
-
     if request.user.is_superuser:
         mailing = get_object_or_404(Mailing, pk=pk)
     else:
@@ -254,22 +285,21 @@ def run_mailing_view(request, pk):
     if now < mailing.start_time:
         messages.error(
             request,
-            f"Невозможно запустить рассылку «{mailing}»: время начала ещё не наступило."
+            f"Невозможно запустить рассылку «{mailing}»: время начала ещё не наступило.",
         )
-        return redirect('mailings:mailings')
+        return redirect("mailings:mailings")
 
     if now > mailing.end_time:
         messages.error(
             request,
-            f"Невозможно запустить рассылку «{mailing}»: время её проведения уже истекло."
+            f"Невозможно запустить рассылку «{mailing}»: время её проведения уже истекло.",
         )
-        return redirect('mailings:mailings')
+        return redirect("mailings:mailings")
 
     mailing.status = Mailing.Status.STARTED
-    mailing.save(update_fields=['status'])
+    mailing.save(update_fields=["status"])
 
     send_single_mailing_task.delay(mailing.pk)
     messages.success(request, f"Рассылка «{mailing}» успешно поставлена в очередь.")
 
-    return redirect('mailings:mailings')
-
+    return redirect("mailings:mailings")

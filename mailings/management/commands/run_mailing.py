@@ -8,22 +8,24 @@ from mailings.tasks import send_single_mailing_task
 
 
 class Command(BaseCommand):
-    help = 'Отправка фоновых рассылок по расписанию или требованию по её ID'
+    help = "Отправка фоновых рассылок по расписанию или требованию по её ID"
 
     def add_arguments(self, parser):
         # Принимаем ID рассылки как обязательный аргумент
-        parser.add_argument('mailing_id', type=int, nargs='?', default=0)
+        parser.add_argument("mailing_id", type=int, nargs="?", default=0)
 
     def handle(self, *args, **options):
-        mailing_id = options['mailing_id']
+        mailing_id = options["mailing_id"]
 
         # Вместо прямой отправки — делегируем задачу Celery воркеру
         send_single_mailing_task.delay(mailing_id)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Рассылка {mailing_id} успешно поставлена в очередь Celery."
-        ))
-        
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Рассылка {mailing_id} успешно поставлена в очередь Celery."
+            )
+        )
+
         # try:
         #     mailing = Mailing.objects.get(pk=mailing_id)
         # except Mailing.DoesNotExist:

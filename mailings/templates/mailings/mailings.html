@@ -8,7 +8,9 @@
 
 <div class="container">
     <div class="row text-center">
-        <a class="p-2 btn btn-outline-primary" href="">Отправить все рассыли</a>
+        {% if user.is_superuser or user.is_manager %}
+            <a class="p-2 btn btn-outline-primary" href="">Отправить все рассыли</a>
+        {% endif %}
         <a href="{% url 'mailings:mailing_form' %}">+ Добавить рассылку</a>
         <table border="1" style="margin-top: 15px; width: 100%; border-collapse: collapse;">
             <thead>
@@ -40,7 +42,7 @@
                     <td>
                         <a href="{% url 'mailings:mailing_update' mailing.pk %}">Редактировать</a> |
                         <a href="{% url 'mailings:mailing_delete' mailing.pk %}">Удалить</a> |
-                        <form action="{% url 'mailings:run_mailing_command' mailing.pk %}"
+                        <form action="{% url 'mailings:run_mailing' mailing.pk %}"
                               method="post" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-primary">
